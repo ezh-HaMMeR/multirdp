@@ -41,12 +41,7 @@ namespace MultiRdp
                     using (var icon = Ui.LoadIcon(SystemInformation.IconSize))
                     using (var trayIcon = Ui.LoadIcon(SystemInformation.SmallIconSize))
                     using (var window = new MainWindow(store, activate, icon, trayIcon))
-                    using (var context = new ApplicationContext(window))
-                    {
-                        if (!store.StartHidden)
-                            window.Show();
-                        Application.Run(context);
-                    }
+                        RunMainWindow(window, store.StartHidden);
                 }
                 catch (Exception error)
                 {
@@ -56,6 +51,23 @@ namespace MultiRdp
                 {
                     instance.ReleaseMutex();
                 }
+            }
+        }
+
+        private static void RunMainWindow(MainWindow window, bool startHidden)
+        {
+            // WinForms automatically shows any form assigned to ApplicationContext.MainForm.
+            using (var context = new ApplicationContext())
+            {
+                EventHandler exit = delegate { context.ExitThread(); };
+                window.Disposed += exit;
+                try
+                {
+                    if (!startHidden)
+                        window.Show();
+                    Application.Run(context);
+                }
+                finally { window.Disposed -= exit; }
             }
         }
     }
