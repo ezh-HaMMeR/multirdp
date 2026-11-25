@@ -58,6 +58,13 @@ namespace MultiRdp
 
     public enum ProfileSort { Manual, Name, Address, UserName, Status }
 
+    public sealed class SavedWindowLayout
+    {
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public int[] ColumnWidths { get; set; }
+    }
+
     [XmlRoot("MultiRdp")]
     public sealed class ProfileStore
     {
@@ -75,6 +82,7 @@ namespace MultiRdp
         public bool StartHidden { get; set; }
         public ProfileSort SortColumn { get; set; }
         public bool SortDescending { get; set; }
+        public SavedWindowLayout WindowLayout { get; set; }
         public List<Profile> Profiles { get; set; }
 
         public static ProfileStore Load()

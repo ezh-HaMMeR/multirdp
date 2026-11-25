@@ -134,22 +134,20 @@ namespace MultiRdp
             grid.AllowUserToDeleteRows = false;
             grid.AllowUserToResizeRows = false;
             grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
             grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             grid.DefaultCellStyle.Padding = new Padding(7, 4, 6, 4);
             grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(7, 3, 0, 3);
             grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(220, 234, 252);
             grid.DefaultCellStyle.SelectionForeColor = Ui.Ink;
-            AddColumn("Название", 22, ProfileSort.Name);
-            AddColumn("Сервер", 30, ProfileSort.Address);
-            AddColumn("Пользователь", 26, ProfileSort.UserName);
-            AddColumn("Состояние", 22, ProfileSort.Status);
+            AddColumn("Название", ProfileSort.Name);
+            AddColumn("Сервер", ProfileSort.Address);
+            AddColumn("Пользователь", ProfileSort.UserName);
+            AddColumn("Состояние", ProfileSort.Status);
             var statusColumn = grid.Columns[3];
-            statusColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-            statusColumn.Width = 154;
-            statusColumn.MinimumWidth = 135;
             statusColumn.DefaultCellStyle.Padding = new Padding(26, 4, 6, 4);
+            ConfigureColumnLayout();
             grid.CellFormatting += FormatStatusCell;
             grid.CellPainting += PaintStatusCell;
             ConfigureOrdering();
@@ -238,11 +236,11 @@ namespace MultiRdp
             toolTips.SetToolTip(button, label);
         }
 
-        private void AddColumn(string caption, float weight, ProfileSort sort)
+        private void AddColumn(string caption, ProfileSort sort)
         {
             grid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                HeaderText = caption, FillWeight = weight, SortMode = DataGridViewColumnSortMode.Programmatic,
+                HeaderText = caption, SortMode = DataGridViewColumnSortMode.Programmatic,
                 Tag = sort, ToolTipText = "По возрастанию → по убыванию → ручной порядок"
             });
         }
@@ -265,6 +263,7 @@ namespace MultiRdp
             if (selectedRow != null)
                 grid.CurrentCell = selectedRow.Cells[0];
             UpdateSortHeaders();
+            MeasureColumns();
             UpdateButtons();
         }
 
@@ -531,6 +530,9 @@ namespace MultiRdp
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             base.OnFormClosing(e);
+            if (e.Cancel)
+                return;
+            SaveWindowLayout(e.CloseReason == CloseReason.UserClosing);
             if (!exiting && e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
