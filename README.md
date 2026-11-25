@@ -4,9 +4,9 @@ MultiRDP — небольшая утилита для управления RDP-�
 
 ## Скачать
 
-[MultiRdp.exe — версия 1.2.0](https://github.com/ezh-HaMMeR/multirdp/releases/download/v1.2.0/MultiRdp.exe)
+[Релизы MultiRDP](https://github.com/ezh-HaMMeR/multirdp/releases)
 
-Запустите скачанный файл. Установка и права администратора не нужны. Сборка проверялась на Windows 11. Совместимость с Windows 10 22H2 не проверялась на практике.
+Скачайте `MultiRdp.exe` из нужного релиза и запустите его. Установка и права администратора не нужны. Сборка проверялась на Windows 11. Совместимость с Windows 10 22H2 не проверялась на практике.
 
 ## Возможности
 
