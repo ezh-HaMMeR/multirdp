@@ -21,6 +21,7 @@ namespace MultiRdp
         public bool Drives { get; set; }
         public bool Clipboard { get; set; }
         public bool Printers { get; set; }
+        public bool ScaleRemoteDesktop { get; set; }
 
         public static string ProtectPassword(string password)
         {

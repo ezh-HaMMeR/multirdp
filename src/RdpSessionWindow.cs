@@ -75,7 +75,7 @@ namespace MultiRdp
                 advanced.RDPPort = (int)port;
                 advanced.EnableCredSspSupport = true;
                 advanced.AuthenticationLevel = 2u;
-                advanced.SmartSizing = true;
+                advanced.SmartSizing = profile.ScaleRemoteDesktop;
                 advanced.RedirectSmartCards = profile.SmartCards;
                 advanced.RedirectDrives = profile.Drives;
                 advanced.RedirectClipboard = profile.Clipboard;

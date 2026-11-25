@@ -62,13 +62,18 @@ namespace MultiRdp
         private readonly CheckBox drives = new CheckBox { Text = "Диски", AutoSize = true };
         private readonly CheckBox clipboard = new CheckBox { Text = "Буфер обмена", AutoSize = true };
         private readonly CheckBox printers = new CheckBox { Text = "Принтеры", AutoSize = true };
+        private readonly CheckBox scaleRemoteDesktop = new CheckBox
+        {
+            Text = "Масштабировать содержимое удаленного рабочего стола",
+            AutoSize = true, Anchor = AnchorStyles.Left
+        };
         private readonly Guid id;
 
         public Profile Result { get; private set; }
 
         public ProfileDialog(Profile source, Icon icon)
         {
-            Ui.Dialog(this, source == null ? "Новое подключение" : "Изменить подключение", new Size(508, 455), icon);
+            Ui.Dialog(this, source == null ? "Новое подключение" : "Изменить подключение", new Size(508, 483), icon);
             id = source == null ? Guid.NewGuid() : source.Id;
 
             var fields = new TableLayoutPanel
@@ -100,7 +105,9 @@ namespace MultiRdp
             fields.Controls.Add(access, 0, 5);
             fields.SetColumnSpan(access, 2);
 
-            fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 8));
+            fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            fields.Controls.Add(scaleRemoteDesktop, 0, 6);
+            fields.SetColumnSpan(scaleRemoteDesktop, 2);
             fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, WrapContents = false };
             var cancel = Ui.Button("Отмена", 96);
@@ -119,6 +126,7 @@ namespace MultiRdp
             drives.Checked = source == null || source.Drives;
             clipboard.Checked = source == null || source.Clipboard;
             printers.Checked = source == null || source.Printers;
+            scaleRemoteDesktop.Checked = source != null && source.ScaleRemoteDesktop;
 
             if (source != null)
             {
@@ -173,7 +181,8 @@ namespace MultiRdp
                     Id = id, Name = name.Text.Trim(), Address = address.Text.Trim(),
                     UserName = user.Text.Trim(), ProtectedPassword = Profile.ProtectPassword(password.Text),
                     SmartCards = smartCards.Checked, WebAuthn = webAuthn.Checked, Drives = drives.Checked,
-                    Clipboard = clipboard.Checked, Printers = printers.Checked
+                    Clipboard = clipboard.Checked, Printers = printers.Checked,
+                    ScaleRemoteDesktop = scaleRemoteDesktop.Checked
                 };
             }
             catch (CryptographicException)
