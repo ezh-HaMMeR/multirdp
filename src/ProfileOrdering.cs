@@ -18,7 +18,7 @@ namespace MultiRdp
         {
             grid.ColumnHeaderMouseClick += delegate(object sender, DataGridViewCellMouseEventArgs e)
             {
-                if (e.Button != MouseButtons.Left)
+                if (e.Button != MouseButtons.Left || e.ColumnIndex == pinColumn.Index)
                     return;
                 var column = (ProfileSort)grid.Columns[e.ColumnIndex].Tag;
                 bool sameColumn = store.SortColumn == column;
@@ -46,6 +46,17 @@ namespace MultiRdp
 
         private IEnumerable<Profile> OrderedProfiles()
         {
+            if (store.PinnedProfiles.Count == 0)
+                return SortUnpinnedProfiles(store.Profiles);
+            var profiles = store.Profiles.ToLookup(profile => profile.Id);
+            var pins = new HashSet<Guid>(store.PinnedProfiles);
+            var pinned = store.PinnedProfiles.SelectMany(id => profiles[id]);
+            var others = store.Profiles.Where(profile => !pins.Contains(profile.Id));
+            return pinned.Concat(SortUnpinnedProfiles(others));
+        }
+
+        private IEnumerable<Profile> SortUnpinnedProfiles(IEnumerable<Profile> profiles)
+        {
             Func<Profile, string> key;
             switch (store.SortColumn)
             {
@@ -53,37 +64,43 @@ namespace MultiRdp
                 case ProfileSort.Address: key = profile => profile.Address; break;
                 case ProfileSort.UserName: key = profile => profile.UserName; break;
                 case ProfileSort.Status: key = profile => StatusText(GetState(profile.Id)); break;
-                default: return store.Profiles;
+                default: return profiles;
             }
             return store.SortDescending
-                ? store.Profiles.OrderByDescending(key, StringComparer.CurrentCultureIgnoreCase)
-                : store.Profiles.OrderBy(key, StringComparer.CurrentCultureIgnoreCase);
+                ? profiles.OrderByDescending(key, StringComparer.CurrentCultureIgnoreCase)
+                : profiles.OrderBy(key, StringComparer.CurrentCultureIgnoreCase);
         }
 
         private void UpdateSortHeaders()
         {
             foreach (DataGridViewColumn column in grid.Columns)
             {
+                if (column.SortMode == DataGridViewColumnSortMode.NotSortable)
+                    continue;
                 var direction = store.SortDescending ? SortOrder.Descending : SortOrder.Ascending;
                 column.HeaderCell.SortGlyphDirection =
                     (ProfileSort)column.Tag == store.SortColumn ? direction : SortOrder.None;
             }
         }
 
-        private void SetOrder(ProfileSort column, bool descending, List<Profile> profiles, Guid select)
+        private void SetOrder(ProfileSort column, bool descending, List<Profile> profiles, Guid select,
+            List<Guid> pinnedProfiles = null)
         {
             var previousColumn = store.SortColumn;
             var previousDirection = store.SortDescending;
             var previousProfiles = store.Profiles;
+            var previousPins = store.PinnedProfiles;
             store.SortColumn = column;
             store.SortDescending = descending;
             store.Profiles = profiles;
+            store.PinnedProfiles = pinnedProfiles ?? previousPins;
             try { store.Save(); }
             catch (Exception error)
             {
                 store.SortColumn = previousColumn;
                 store.SortDescending = previousDirection;
                 store.Profiles = previousProfiles;
+                store.PinnedProfiles = previousPins;
                 Ui.Error(this, "Не удалось сохранить порядок подключений. " + error.Message);
                 return;
             }
@@ -96,7 +113,7 @@ namespace MultiRdp
             if (e.Button != MouseButtons.Left || grid.Rows.Count < 2)
                 return;
             var hit = grid.HitTest(e.X, e.Y);
-            if (hit.Type != DataGridViewHitTestType.Cell)
+            if (hit.Type != DataGridViewHitTestType.Cell || hit.ColumnIndex == pinColumn.Index)
                 return;
             dragCandidate = ((Profile)grid.Rows[hit.RowIndex].Tag).Id;
             var size = SystemInformation.DragSize;
@@ -135,9 +152,10 @@ namespace MultiRdp
         private int FindDropRow(Point point)
         {
             var hit = grid.HitTest(point.X, point.Y);
-            if (hit.Type != DataGridViewHitTestType.Cell || ((Profile)grid.Rows[hit.RowIndex].Tag).Id == draggedId)
+            if (hit.Type != DataGridViewHitTestType.Cell)
                 return -1;
-            return hit.RowIndex;
+            Guid targetId = ((Profile)grid.Rows[hit.RowIndex].Tag).Id;
+            return targetId != draggedId && IsPinned(targetId) == IsPinned(draggedId) ? hit.RowIndex : -1;
         }
 
         private void OnRowDrop(object sender, DragEventArgs e)
@@ -147,14 +165,32 @@ namespace MultiRdp
             if (draggedId == Guid.Empty || target < 0)
                 return;
 
-            var profiles = grid.Rows.Cast<DataGridViewRow>().Select(row => (Profile)row.Tag).ToList();
+            var targetId = ((Profile)grid.Rows[target].Tag).Id;
+            if (IsPinned(draggedId))
+            {
+                var pinned = new List<Guid>(store.PinnedProfiles);
+                Swap(pinned, pinned.IndexOf(draggedId), pinned.IndexOf(targetId));
+                SetOrder(store.SortColumn, store.SortDescending, store.Profiles, draggedId, pinned);
+                return;
+            }
+
+            var pins = new HashSet<Guid>(store.PinnedProfiles);
+            var profiles = grid.Rows.Cast<DataGridViewRow>().Select(row => (Profile)row.Tag)
+                .Where(profile => !pins.Contains(profile.Id)).ToList();
             int source = profiles.FindIndex(profile => profile.Id == draggedId);
             if (source < 0)
                 return;
-            var moved = profiles[source];
-            profiles[source] = profiles[target];
-            profiles[target] = moved;
-            SetOrder(ProfileSort.Manual, false, profiles, draggedId);
+            Swap(profiles, source, profiles.FindIndex(profile => profile.Id == targetId));
+            var reordered = new Queue<Profile>(profiles);
+            var manualOrder = store.Profiles.Select(profile => pins.Contains(profile.Id) ? profile : reordered.Dequeue()).ToList();
+            SetOrder(ProfileSort.Manual, false, manualOrder, draggedId);
+        }
+
+        private static void Swap<T>(List<T> items, int source, int target)
+        {
+            var item = items[source];
+            items[source] = items[target];
+            items[target] = item;
         }
 
         private void ScrollDuringDrag()

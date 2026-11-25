@@ -78,6 +78,7 @@ namespace MultiRdp
         public ProfileStore()
         {
             Profiles = new List<Profile>();
+            PinnedProfiles = new List<Guid>();
         }
 
         public bool StartHidden { get; set; }
@@ -85,6 +86,7 @@ namespace MultiRdp
         public bool SortDescending { get; set; }
         public SavedWindowLayout WindowLayout { get; set; }
         public List<Profile> Profiles { get; set; }
+        public List<Guid> PinnedProfiles { get; set; }
 
         public static ProfileStore Load()
         {

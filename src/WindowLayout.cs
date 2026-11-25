@@ -16,7 +16,7 @@ namespace MultiRdp
 
         private void ConfigureColumnLayout()
         {
-            manualWidths = new int[grid.Columns.Count];
+            manualWidths = new int[grid.Columns.Count - 1];
             contentWidths = new int[grid.Columns.Count];
             var saved = store.WindowLayout;
             if (saved != null && saved.ColumnWidths != null)
@@ -24,7 +24,7 @@ namespace MultiRdp
 
             grid.ColumnWidthChanged += delegate(object sender, DataGridViewColumnEventArgs e)
             {
-                if (layoutReady && !arrangingColumns)
+                if (layoutReady && !arrangingColumns && e.Column != pinColumn)
                     manualWidths[e.Column.Index] = ToLogicalPixels(e.Column.Width);
             };
             grid.SizeChanged += delegate { ArrangeColumns(); };
@@ -72,6 +72,11 @@ namespace MultiRdp
         {
             foreach (DataGridViewColumn column in grid.Columns)
             {
+                if (column == pinColumn)
+                {
+                    contentWidths[column.Index] = ToDevicePixels(32);
+                    continue;
+                }
                 int width = column.GetPreferredWidth(DataGridViewAutoSizeColumnMode.AllCells, true);
                 if ((ProfileSort)column.Tag == ProfileSort.Status)
                 {
@@ -86,7 +91,7 @@ namespace MultiRdp
 
         private int ColumnWidth(int index)
         {
-            if (manualWidths[index] <= 0)
+            if (index == pinColumn.Index || manualWidths[index] <= 0)
                 return contentWidths[index];
             return Math.Max(grid.Columns[index].MinimumWidth, Math.Min(MaximumColumnWidth, ToDevicePixels(manualWidths[index])));
         }
@@ -121,7 +126,7 @@ namespace MultiRdp
                 foreach (DataGridViewColumn column in grid.Columns)
                 {
                     int width = ColumnWidth(column.Index);
-                    if (manualWidths[column.Index] <= 0)
+                    if (column != pinColumn && manualWidths[column.Index] <= 0)
                     {
                         int extra = spare / automatic--;
                         width += extra;

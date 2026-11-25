@@ -147,6 +147,7 @@ namespace MultiRdp
             AddColumn("Состояние", ProfileSort.Status);
             var statusColumn = grid.Columns[3];
             statusColumn.DefaultCellStyle.Padding = new Padding(26, 4, 6, 4);
+            ConfigurePinColumn();
             ConfigureColumnLayout();
             grid.CellFormatting += FormatStatusCell;
             grid.CellPainting += PaintStatusCell;
@@ -154,7 +155,7 @@ namespace MultiRdp
             grid.SelectionChanged += delegate { UpdateButtons(); };
             grid.CellDoubleClick += delegate(object sender, DataGridViewCellEventArgs args)
             {
-                if (args.RowIndex >= 0)
+                if (args.RowIndex >= 0 && args.ColumnIndex != pinColumn.Index)
                     ConnectSelected();
             };
             var body = new Panel
@@ -252,10 +253,13 @@ namespace MultiRdp
             DataGridViewRow selectedRow = null;
             foreach (var profile in OrderedProfiles())
             {
-                int index = grid.Rows.Add(profile.Name, profile.Address, profile.UserName, GetState(profile.Id));
-                grid.Rows[index].Tag = profile;
+                bool pinned = IsPinned(profile.Id);
+                int index = grid.Rows.Add(profile.Name, profile.Address, profile.UserName, GetState(profile.Id), pinned);
+                var row = grid.Rows[index];
+                row.Tag = profile;
+                row.Cells[pinColumn.Index].ToolTipText = pinned ? "Открепить" : "Закрепить наверху";
                 if (profile.Id == selected)
-                    selectedRow = grid.Rows[index];
+                    selectedRow = row;
             }
             bool hasProfiles = grid.Rows.Count > 0;
             empty.Visible = !hasProfiles;
@@ -415,16 +419,20 @@ namespace MultiRdp
                 return;
 
             var previous = store.Profiles;
+            var previousPins = store.PinnedProfiles;
             store.Profiles = previous.Where(profile => profile.Id != selected.Id).ToList();
-            CommitProfiles(previous, Guid.Empty);
+            store.PinnedProfiles = previousPins.Where(id => id != selected.Id).ToList();
+            CommitProfiles(previous, Guid.Empty, previousPins);
         }
 
-        private void CommitProfiles(List<Profile> previous, Guid select)
+        private void CommitProfiles(List<Profile> previous, Guid select, List<Guid> previousPins = null)
         {
             try { store.Save(); }
             catch (Exception error)
             {
                 store.Profiles = previous;
+                if (previousPins != null)
+                    store.PinnedProfiles = previousPins;
                 Ui.Error(this, "Не удалось сохранить список подключений. " + error.Message);
                 return;
             }
